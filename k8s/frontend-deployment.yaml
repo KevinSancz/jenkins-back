@@ -2,6 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: frontend
+  labels:
+    app: frontend
 spec:
   replicas: 2
   selector:
@@ -14,25 +16,44 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: iad.ocir.io/idxyojfomq6q/frontend:latest
+        image: iad.ocir.io/idxyojfomq6q/frontend:${BUILD_NUMBER} # Permite versionado dinámico
         ports:
         - containerPort: 80
-
-        # Ejemplo para conectar con el backend
         env:
         - name: BACKEND_URL
-          value: "http://backend:3000" 
-          # Nombre del servicio backend en el cluster
-
+          value: "http://backend:3000"
+        resources: # Recurso recomendado para limitar uso de CPU/memoria
+          requests:
+            memory: "128Mi"
+            cpu: "250m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+        readinessProbe: # Asegura que el contenedor esté listo antes de recibir tráfico
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe: # Detecta y reinicia contenedores colgados
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 10
+      imagePullSecrets: # Referencia al Secret para OCIR
+      - name: oci-registry-secret
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: frontend
+  labels:
+    app: frontend
 spec:
   selector:
     app: frontend
   ports:
-    - port: 80
-      targetPort: 80
+  - port: 80
+    targetPort: 80
   type: LoadBalancer
