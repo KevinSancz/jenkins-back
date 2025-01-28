@@ -15,7 +15,7 @@ pipeline {
         stage('Checkout Repositories') {
             steps {
                 dir('repo') {
-                    git url: "${REPO_URL}", branch: 'main'
+                    git url: "${REPO_URL}", branch: 'master'
                 }
             }
         }
