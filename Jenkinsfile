@@ -2,14 +2,15 @@ pipeline {
     agent any
 
     environment {
-        OCI_REGISTRY  = 'iad.ocir.io'               
-        OCI_NAMESPACE = 'idxyojfomq6q'             
-        BACK_IMAGE_NAME = 'backend'                
-        FRONT_IMAGE_NAME = 'frontend'              
-        KUBECONFIG    = '/home/opc/.kube/config'   
-        OCI_CONFIG_FILE = '/var/lib/jenkins/.oci/config' 
+        OCI_REGISTRY  = 'iad.ocir.io'
+        OCI_NAMESPACE = 'idxyojfomq6q'
+        BACK_IMAGE_NAME = 'backend'
+        FRONT_IMAGE_NAME = 'frontend'
+        KUBECONFIG    = '/home/opc/.kube/config'
+        OCI_CONFIG_FILE = '/var/lib/jenkins/.oci/config'
         REPO_URL      = 'https://github.com/KevinSancz/jenkins-back.git'
-        KUBE_API      = '150.230.171.99:6443'  // Asegúrate de que sea el endpoint correcto
+        KUBE_API      = '150.230.171.99:6443'  // API pública del clúster OKE
+        CLUSTER_ID    = 'ocid1.cluster.oc1.iad.aaaaaaaaq4k6vopup3yyac3776sfrbr47jm2qp5j7db2upvmdcbwqn2rc55q'
     }
 
     stages {
@@ -76,7 +77,7 @@ pipeline {
                         script: "kubectl cluster-info --kubeconfig=${KUBECONFIG}",
                         returnStdout: true
                     ).trim()
-                    echo "Kubernetes Cluster Info: ${kubeTest}"
+                    echo "✅ Kubernetes Cluster Info: ${kubeTest}"
                 }
             }
         }
@@ -90,7 +91,7 @@ pipeline {
                     ).trim()
 
                     if (secretExists.contains("NOT_FOUND")) {
-                        echo "Secret not found, creating it..."
+                        echo "🛑 Secret not found, creating it..."
                         sh """
                         kubectl create secret docker-registry oci-registry-secret \
                         --docker-server=${OCI_REGISTRY} \
@@ -100,7 +101,7 @@ pipeline {
                         --kubeconfig=${KUBECONFIG}
                         """
                     } else {
-                        echo "OCI Registry Secret already exists."
+                        echo "✅ OCI Registry Secret already exists."
                     }
                 }
             }
@@ -114,31 +115,50 @@ pipeline {
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
                     script {
+                        // Generar el token de acceso para Kubernetes
                         def kubeTokenJson = sh(
                             script: """
                                 OCI_CONFIG_FILE=${OCI_CONFIG_FILE} \
                                 oci ce cluster generate-token \
-                                    --cluster-id ocid1.cluster.oc1.iad.aaaaaaaaq4k6vopup3yyac3776sfrbr47jm2qp5j7db2upvmdcbwqn2rc55q \
+                                    --cluster-id ${CLUSTER_ID} \
                                     --region iad
                             """,
                             returnStdout: true
                         ).trim()
+
+                        if (!kubeTokenJson || !kubeTokenJson.contains("token")) {
+                            error "❌ Failed to generate Kubernetes token. Verify OCI CLI and cluster configuration."
+                        }
 
                         def kubeToken = sh(
                             script: "echo '${kubeTokenJson}' | jq -r '.status.token'",
                             returnStdout: true
                         ).trim()
 
+                        if (!kubeToken) {
+                            error "❌ Failed to extract token from JSON. Verify jq installation and JSON structure."
+                        }
+
                         withEnv(["KUBECONFIG=${KUBECONFIG}", "KUBE_TOKEN=${kubeToken}"]) {
                             sh """
-                                sed -i "s/\\\${BUILD_NUMBER}/${BUILD_NUMBER}/g" repo/k8s/backend-deployment.yaml
-                                sed -i "s/\\\${BUILD_NUMBER}/${BUILD_NUMBER}/g" repo/k8s/frontend-deployment.yaml
+                                echo "🔄 Cloning repo to get Kubernetes manifests..."
+                                rm -rf temp_repo || true
+                                git clone ${REPO_URL} temp_repo
 
-                                kubectl --token=$KUBE_TOKEN apply -f repo/k8s/backend-deployment.yaml
-                                kubectl --token=$KUBE_TOKEN apply -f repo/k8s/frontend-deployment.yaml
+                                echo "🔄 Replacing build number in manifests..."
+                                sed -i "s/\\\${BUILD_NUMBER}/${BUILD_NUMBER}/g" temp_repo/k8s/backend-deployment.yaml
+                                sed -i "s/\\\${BUILD_NUMBER}/${BUILD_NUMBER}/g" temp_repo/k8s/frontend-deployment.yaml
 
-                                kubectl --token=$KUBE_TOKEN rollout status deployment/backend
-                                kubectl --token=$KUBE_TOKEN rollout status deployment/frontend
+                                echo "🚀 Applying Kubernetes manifests..."
+                                kubectl --token=$KUBE_TOKEN apply -f temp_repo/k8s/backend-deployment.yaml
+                                kubectl --token=$KUBE_TOKEN apply -f temp_repo/k8s/frontend-deployment.yaml
+
+                                echo "🕒 Waiting for deployment rollout..."
+                                kubectl --token=$KUBE_TOKEN rollout status deployment/backend --timeout=90s || exit 1
+                                kubectl --token=$KUBE_TOKEN rollout status deployment/frontend --timeout=90s || exit 1
+
+                                echo "✅ Deployment successful!"
+                                rm -rf temp_repo
                             """
                         }
                     }
@@ -149,6 +169,7 @@ pipeline {
         stage('Cleanup') {
             steps {
                 sh """
+                echo "🧹 Cleaning up local Docker images..."
                 docker rmi ${OCI_REGISTRY}/${OCI_NAMESPACE}/${BACK_IMAGE_NAME}:${BUILD_NUMBER} || true
                 docker rmi ${OCI_REGISTRY}/${OCI_NAMESPACE}/${FRONT_IMAGE_NAME}:${BUILD_NUMBER} || true
                 docker image prune -f || true
