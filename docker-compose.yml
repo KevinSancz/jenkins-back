@@ -1,0 +1,25 @@
+version: "3.8"
+services:
+  backend:
+    build:
+      context: ./backend   # Ruta al Dockerfile del backend
+    ports:
+      - "3000:3000"        # Exponer el backend en el puerto 3000
+    networks:
+      - app-network
+    environment:
+      - NODE_ENV=development
+
+  frontend:
+    build:
+      context: ./frontend  # Ruta al Dockerfile del frontend
+    ports:
+      - "8080:80"          # Exponer el frontend en el puerto 8080
+    networks:
+      - app-network
+    environment:
+      - BACKEND_URL=http://backend:3000  # Dirección interna del backend
+
+networks:
+  app-network:
+    driver: bridge
