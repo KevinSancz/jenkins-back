@@ -24,7 +24,7 @@ pipeline {
             parallel {
                 stage('Backend Image') {
                     steps {
-                        dir('repo/backend') {
+                        dir('repo/Back') {
                             script {
                                 dockerImageBackend = docker.build("${OCI_REGISTRY}/${OCI_NAMESPACE}/${BACK_IMAGE_NAME}:${BUILD_NUMBER}")
                             }
@@ -33,7 +33,7 @@ pipeline {
                 }
                 stage('Frontend Image') {
                     steps {
-                        dir('repo/frontend') {
+                        dir('repo/Front') {
                             script {
                                 dockerImageFrontend = docker.build("${OCI_REGISTRY}/${OCI_NAMESPACE}/${FRONT_IMAGE_NAME}:${BUILD_NUMBER}")
                             }
