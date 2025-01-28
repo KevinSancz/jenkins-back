@@ -48,7 +48,7 @@ pipeline {
                 stage('Push Backend Image') {
                     steps {
                         script {
-                            docker.withRegistry("https://${OCI_REGISTRY}", 'oci-credentials') {
+                            docker.withRegistry("https://${OCI_REGISTRY}", '15050001') {
                                 dockerImageBackend.push("${BUILD_NUMBER}")
                                 dockerImageBackend.push("latest")
                             }
@@ -58,7 +58,7 @@ pipeline {
                 stage('Push Frontend Image') {
                     steps {
                         script {
-                            docker.withRegistry("https://${OCI_REGISTRY}", 'oci-credentials') {
+                            docker.withRegistry("https://${OCI_REGISTRY}", '15050001') {
                                 dockerImageFrontend.push("${BUILD_NUMBER}")
                                 dockerImageFrontend.push("latest")
                             }
