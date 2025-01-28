@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        OCI_REGISTRY  = 'iad.ocir.io'               // Cambiar según tu región
+        OCI_REGISTRY  = 'iad.ocir.io'               // Cambia según tu región
         OCI_NAMESPACE = 'idxyojfomq6q'             // Namespace en OCI
         BACK_IMAGE_NAME = 'backend'                // Nombre de la imagen del backend
         FRONT_IMAGE_NAME = 'frontend'              // Nombre de la imagen del frontend
@@ -24,7 +24,7 @@ pipeline {
             parallel {
                 stage('Backend Image') {
                     steps {
-                        dir('repo/Back') {
+                        dir('repo/backend') {
                             script {
                                 dockerImageBackend = docker.build("${OCI_REGISTRY}/${OCI_NAMESPACE}/${BACK_IMAGE_NAME}:${BUILD_NUMBER}")
                             }
@@ -33,7 +33,7 @@ pipeline {
                 }
                 stage('Frontend Image') {
                     steps {
-                        dir('repo/Front') {
+                        dir('repo/frontend') {
                             script {
                                 dockerImageFrontend = docker.build("${OCI_REGISTRY}/${OCI_NAMESPACE}/${FRONT_IMAGE_NAME}:${BUILD_NUMBER}")
                             }
@@ -153,13 +153,36 @@ pipeline {
 
         stage('Deploy to OKE') {
             steps {
-                withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
-                    sh """
-                    kubectl apply -f backend-deployment.yaml
-                    kubectl apply -f frontend-deployment.yaml
-                    kubectl rollout status deployment/backend
-                    kubectl rollout status deployment/frontend
-                    """
+                withCredentials([usernamePassword(
+                    credentialsId: '15050001', // ID de credenciales de OCI en Jenkins
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    script {
+                        def kubeTokenJson = sh(
+                            script: """
+                                OCI_CONFIG_FILE=${OCI_CONFIG_FILE} \
+                                oci ce cluster generate-token \
+                                    --cluster-id ocid1.cluster.oc1.iad.aaaaaaaaq4k6vopup3yyac3776sfrbr47jm2qp5j7db2upvmdcbwqn2rc55q \
+                                    --region iad
+                            """,
+                            returnStdout: true
+                        ).trim()
+
+                        def kubeToken = sh(
+                            script: "echo '${kubeTokenJson}' | jq -r '.status.token'",
+                            returnStdout: true
+                        ).trim()
+
+                        withEnv(["KUBECONFIG=${KUBECONFIG}", "KUBE_TOKEN=${kubeToken}"]) {
+                            sh """
+                                kubectl --token=$KUBE_TOKEN apply -f backend-deployment.yaml
+                                kubectl --token=$KUBE_TOKEN apply -f frontend-deployment.yaml
+                                kubectl --token=$KUBE_TOKEN rollout status deployment/backend
+                                kubectl --token=$KUBE_TOKEN rollout status deployment/frontend
+                            """
+                        }
+                    }
                 }
             }
         }
