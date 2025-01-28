@@ -2,18 +2,17 @@ pipeline {
     agent any
 
     environment {
-        // Variables de entorno
-        OCI_REGISTRY   = 'iad.ocir.io'
-        OCI_NAMESPACE  = 'idxyojfomq6q'
-        BACK_IMAGE_NAME  = 'backend'
-        FRONT_IMAGE_NAME = 'frontend'
-        REPO_URL       = 'https://github.com/tu-org/tu-repo.git'
-        KUBECONFIG     = '/home/opc/.kube/config'
-        OCI_CONFIG_FILE = '/var/lib/jenkins/.oci/config'
+        OCI_REGISTRY  = 'iad.ocir.io'               // Cambia según tu región
+        OCI_NAMESPACE = 'idxyojfomq6q'             // Namespace en OCI
+        BACK_IMAGE_NAME = 'backend'                // Nombre de la imagen del backend
+        FRONT_IMAGE_NAME = 'frontend'              // Nombre de la imagen del frontend
+        KUBECONFIG    = '/home/opc/.kube/config'   // Ruta del archivo kubeconfig en Jenkins
+        OCI_CONFIG_FILE = '/var/lib/jenkins/.oci/config' // Ruta al archivo de configuración de OCI
+        REPO_URL      = 'https://github.com/KevinSancz/jenkins-back.git' // URL del repositorio
     }
 
     stages {
-        stage('Checkout') {
+        stage('Checkout Repositories') {
             steps {
                 dir('repo') {
                     git url: "${REPO_URL}", branch: 'master'
@@ -23,20 +22,20 @@ pipeline {
 
         stage('Build Docker Images') {
             parallel {
-                stage('Backend') {
+                stage('Backend Image') {
                     steps {
                         dir('repo/Back') {
                             script {
-                                dockerImageBackend = docker.build("${OCI_REGISTRY}/${OCI_NAMESPACE}/${BACK_IMAGE_NAME}:latest")
+                                dockerImageBackend = docker.build("${OCI_REGISTRY}/${OCI_NAMESPACE}/${BACK_IMAGE_NAME}:${BUILD_NUMBER}")
                             }
                         }
                     }
                 }
-                stage('Frontend') {
+                stage('Frontend Image') {
                     steps {
                         dir('repo/Front') {
                             script {
-                                dockerImageFrontend = docker.build("${OCI_REGISTRY}/${OCI_NAMESPACE}/${FRONT_IMAGE_NAME}:latest")
+                                dockerImageFrontend = docker.build("${OCI_REGISTRY}/${OCI_NAMESPACE}/${FRONT_IMAGE_NAME}:${BUILD_NUMBER}")
                             }
                         }
                     }
@@ -44,21 +43,23 @@ pipeline {
             }
         }
 
-        stage('Push Docker Images') {
+        stage('Push Docker Images to OCI Registry') {
             parallel {
-                stage('Push Backend') {
+                stage('Push Backend Image') {
                     steps {
                         script {
                             docker.withRegistry("https://${OCI_REGISTRY}", '15050001') {
+                                dockerImageBackend.push("${BUILD_NUMBER}")
                                 dockerImageBackend.push("latest")
                             }
                         }
                     }
                 }
-                stage('Push Frontend') {
+                stage('Push Frontend Image') {
                     steps {
                         script {
                             docker.withRegistry("https://${OCI_REGISTRY}", '15050001') {
+                                dockerImageFrontend.push("${BUILD_NUMBER}")
                                 dockerImageFrontend.push("latest")
                             }
                         }
@@ -70,23 +71,34 @@ pipeline {
         stage('Deploy to OKE') {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: '15050001', // ID de credenciales
+                    credentialsId: '15050001', // ID de credenciales de OCI en Jenkins
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
                     script {
-                        // Si requieres token para 'kubectl --token', genera aquí.
-                        // O asume que tu KUBECONFIG está configurado.
-                        
-                        sh """
-                        # Aplica los manifiestos de k8s
-                        kubectl apply -f repo/k8s/backend-deployment.yaml
-                        kubectl apply -f repo/k8s/frontend-deployment.yaml
+                        def kubeTokenJson = sh(
+                            script: """
+                                OCI_CONFIG_FILE=${OCI_CONFIG_FILE} \
+                                oci ce cluster generate-token \
+                                    --cluster-id ocid1.cluster.oc1.iad.aaaaaaaaq4k6vopup3yyac3776sfrbr47jm2qp5j7db2upvmdcbwqn2rc55q \
+                                    --region iad
+                            """,
+                            returnStdout: true
+                        ).trim()
 
-                        # Verifica rollout
-                        kubectl rollout status deployment/backend
-                        kubectl rollout status deployment/frontend
-                        """
+                        def kubeToken = sh(
+                            script: "echo '${kubeTokenJson}' | jq -r '.status.token'",
+                            returnStdout: true
+                        ).trim()
+
+                        withEnv(["KUBECONFIG=${KUBECONFIG}", "KUBE_TOKEN=${kubeToken}"]) {
+                            sh """
+                                kubectl --token=$KUBE_TOKEN apply -f repo/k8s/backend-deployment.yaml
+                                kubectl --token=$KUBE_TOKEN apply -f repo/k8s/frontend-deployment.yaml
+                                kubectl --token=$KUBE_TOKEN rollout status deployment/backend
+                                kubectl --token=$KUBE_TOKEN rollout status deployment/frontend
+                            """
+                        }
                     }
                 }
             }
@@ -95,9 +107,9 @@ pipeline {
         stage('Cleanup') {
             steps {
                 sh """
-                docker rmi ${OCI_REGISTRY}/${OCI_NAMESPACE}/${BACK_IMAGE_NAME}:latest || true
-                docker rmi ${OCI_REGISTRY}/${OCI_NAMESPACE}/${FRONT_IMAGE_NAME}:latest || true
-                docker image prune -f
+                docker rmi ${OCI_REGISTRY}/${OCI_NAMESPACE}/${BACK_IMAGE_NAME}:${BUILD_NUMBER} || true
+                docker rmi ${OCI_REGISTRY}/${OCI_NAMESPACE}/${FRONT_IMAGE_NAME}:${BUILD_NUMBER} || true
+                docker image prune -f || true
                 """
             }
         }
