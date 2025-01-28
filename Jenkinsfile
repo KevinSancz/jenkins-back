@@ -2,13 +2,14 @@ pipeline {
     agent any
 
     environment {
-        OCI_REGISTRY  = 'iad.ocir.io'               // Cambia según tu región
-        OCI_NAMESPACE = 'idxyojfomq6q'             // Namespace en OCI
-        BACK_IMAGE_NAME = 'backend'                // Nombre de la imagen del backend
-        FRONT_IMAGE_NAME = 'frontend'              // Nombre de la imagen del frontend
-        KUBECONFIG    = '/home/opc/.kube/config'   // Ruta del archivo kubeconfig en Jenkins
-        OCI_CONFIG_FILE = '/var/lib/jenkins/.oci/config' // Ruta al archivo de configuración de OCI
-        REPO_URL      = 'https://github.com/KevinSancz/jenkins-back.git' // URL del repositorio
+        OCI_REGISTRY  = 'iad.ocir.io'               
+        OCI_NAMESPACE = 'idxyojfomq6q'             
+        BACK_IMAGE_NAME = 'backend'                
+        FRONT_IMAGE_NAME = 'frontend'              
+        KUBECONFIG    = '/home/opc/.kube/config'   
+        OCI_CONFIG_FILE = '/var/lib/jenkins/.oci/config' 
+        REPO_URL      = 'https://github.com/KevinSancz/jenkins-back.git'
+        KUBE_API      = '150.230.171.99:6443'  // Asegúrate de que sea el endpoint correcto
     }
 
     stages {
@@ -68,10 +69,47 @@ pipeline {
             }
         }
 
+        stage('Verify Kubernetes Connection') {
+            steps {
+                script {
+                    def kubeTest = sh(
+                        script: "kubectl cluster-info --kubeconfig=${KUBECONFIG}",
+                        returnStdout: true
+                    ).trim()
+                    echo "Kubernetes Cluster Info: ${kubeTest}"
+                }
+            }
+        }
+
+        stage('Ensure OCI Registry Secret Exists') {
+            steps {
+                script {
+                    def secretExists = sh(
+                        script: "kubectl get secret oci-registry-secret --kubeconfig=${KUBECONFIG} || echo 'NOT_FOUND'",
+                        returnStdout: true
+                    ).trim()
+
+                    if (secretExists.contains("NOT_FOUND")) {
+                        echo "Secret not found, creating it..."
+                        sh """
+                        kubectl create secret docker-registry oci-registry-secret \
+                        --docker-server=${OCI_REGISTRY} \
+                        --docker-username='${OCI_NAMESPACE}/kevin.sanchez@ebiw.mx' \
+                        --docker-password='${DOCKER_PASS}' \
+                        --docker-email='kevin.sanchez@ebiw.mx' \
+                        --kubeconfig=${KUBECONFIG}
+                        """
+                    } else {
+                        echo "OCI Registry Secret already exists."
+                    }
+                }
+            }
+        }
+
         stage('Deploy to OKE') {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: '15050001', // ID de credenciales de OCI en Jenkins
+                    credentialsId: '15050001', 
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
@@ -93,8 +131,12 @@ pipeline {
 
                         withEnv(["KUBECONFIG=${KUBECONFIG}", "KUBE_TOKEN=${kubeToken}"]) {
                             sh """
+                                sed -i "s/\\\${BUILD_NUMBER}/${BUILD_NUMBER}/g" repo/k8s/backend-deployment.yaml
+                                sed -i "s/\\\${BUILD_NUMBER}/${BUILD_NUMBER}/g" repo/k8s/frontend-deployment.yaml
+
                                 kubectl --token=$KUBE_TOKEN apply -f repo/k8s/backend-deployment.yaml
                                 kubectl --token=$KUBE_TOKEN apply -f repo/k8s/frontend-deployment.yaml
+
                                 kubectl --token=$KUBE_TOKEN rollout status deployment/backend
                                 kubectl --token=$KUBE_TOKEN rollout status deployment/frontend
                             """
