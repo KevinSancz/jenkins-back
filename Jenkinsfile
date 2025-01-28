@@ -74,37 +74,37 @@ pipeline {
                     // Backend Deployment YAML
                     sh """
                     echo '
-                    apiVersion: apps/v1
-                    kind: Deployment
-                    metadata:
-                      name: backend
-                    spec:
-                      replicas: 2
-                      selector:
-                        matchLabels:
-                          app: backend
-                      template:
-                        metadata:
-                          labels:
-                            app: backend
-                        spec:
-                          containers:
-                          - name: backend
-                            image: ${OCI_REGISTRY}/${OCI_NAMESPACE}/${BACK_IMAGE_NAME}:${BUILD_NUMBER}
-                            ports:
-                            - containerPort: 3000
-                    ---
-                    apiVersion: v1
-                    kind: Service
-                    metadata:
-                      name: backend
-                    spec:
-                      selector:
-                        app: backend
-                      ports:
-                      - port: 3000
-                        targetPort: 3000
-                      type: ClusterIP
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: backend
+        image: iad.ocir.io/idxyojfomq6q/backend:6
+        ports:
+        - containerPort: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+spec:
+  selector:
+    app: backend
+  ports:
+  - port: 3000
+    targetPort: 3000
+  type: ClusterIP
                     ' > backend-deployment.yaml
                     """
 
