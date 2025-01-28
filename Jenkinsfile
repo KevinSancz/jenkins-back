@@ -154,8 +154,8 @@ pipeline {
                                 kubectl --token=$KUBE_TOKEN apply -f temp_repo/k8s/frontend-deployment.yaml
 
                                 echo "🕒 Waiting for deployment rollout..."
-                                kubectl --token=$KUBE_TOKEN rollout status deployment/k8s/backend-deployment --timeout=90s || exit 1
-                                kubectl --token=$KUBE_TOKEN rollout status deployment/k8s/frontend-deployment --timeout=90s || exit 1
+                                kubectl --token=$KUBE_TOKEN rollout status deployment/backend --timeout=90s || exit 1
+                                kubectl --token=$KUBE_TOKEN rollout status deployment/frontend --timeout=90s || exit 1
 
                                 echo "✅ Deployment successful!"
                                 rm -rf temp_repo
