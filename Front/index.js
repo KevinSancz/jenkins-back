@@ -35,7 +35,7 @@ app.get('/pokemon', async (req, res) => {
             <a href="/">Buscar otro Pokémon</a>
         `);
     } catch (error) {
-        console.error('Error al consumir el backend:', error);
+        console.error('Error al consumir el back:', error);
         res.send(`
             <h1>Error: Pokémon no encontrado</h1>
             <a href="/">Volver a buscar</a>
