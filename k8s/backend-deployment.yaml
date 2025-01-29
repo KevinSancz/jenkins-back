@@ -28,13 +28,13 @@ spec:
             cpu: "500m"
         readinessProbe: # Asegura que el contenedor esté listo antes de recibir tráfico
           httpGet:
-            path: /health
+            path: /
             port: 3000
           initialDelaySeconds: 5
           periodSeconds: 10
         livenessProbe: # Detecta y reinicia contenedores colgados
           httpGet:
-            path: /health
+            path: /
             port: 3000
           initialDelaySeconds: 10
           periodSeconds: 10
