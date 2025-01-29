@@ -11,19 +11,7 @@ app.get('/health', (req, res) => {
 
 // Ruta para consumir PokéAPI
 app.get('/pokemon/:name', async (req, res) => {
-    const { name } = req.params;
-
-    try {
-        const response = await axios.get(`Holas`);
-        const pokemonData = response.data;
-
-        res.json({
-            "saludo":"hola"
-        });
-    } catch (error) {
-        console.error(error.message);
-        res.status(404).json({ error: 'Pokémon no encontrado' });
-    }
+    res.json({ message: "Hola" });
 });
 
 // Iniciar servidor en 0.0.0.0 para que Kubernetes lo detecte
