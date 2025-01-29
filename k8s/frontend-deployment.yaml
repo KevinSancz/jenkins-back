@@ -16,32 +16,37 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: iad.ocir.io/idxyojfomq6q/frontend:BUILD_NUMBER_PLACEHOLDER # Permite versionado dinámico
+        image: iad.ocir.io/idxyojfomq6q/frontend:BUILD_NUMBER_PLACEHOLDER
         ports:
-        - containerPort: 80
+        - containerPort: 8080
         env:
         - name: BACKEND_URL
           value: "http://backend:3000"
-        resources: # Recurso recomendado para limitar uso de CPU/memoria
+        resources:
           requests:
             memory: "128Mi"
             cpu: "250m"
           limits:
-            memory: "256Mi"
-            cpu: "500m"
-        readinessProbe: # Asegura que el contenedor esté listo antes de recibir tráfico
+            memory: "512Mi"
+            cpu: "750m"
+        readinessProbe:
           httpGet:
-            path: /
-            port: 80
+            path: /health
+            port: 8080
           initialDelaySeconds: 5
           periodSeconds: 10
-        livenessProbe: # Detecta y reinicia contenedores colgados
+          timeoutSeconds: 3
+          failureThreshold: 5
+        livenessProbe:
           httpGet:
-            path: /
-            port: 80
+            path: /health
+            port: 8080
           initialDelaySeconds: 10
           periodSeconds: 10
-      imagePullSecrets: # Referencia al Secret para OCIR
+          timeoutSeconds: 3
+          failureThreshold: 5
+      restartPolicy: Always
+      imagePullSecrets:
       - name: oci-registry-secret
 ---
 apiVersion: v1
@@ -55,5 +60,5 @@ spec:
     app: frontend
   ports:
   - port: 80
-    targetPort: 80
+    targetPort: 8080
   type: LoadBalancer

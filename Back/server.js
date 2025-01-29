@@ -4,7 +4,7 @@ const axios = require('axios');
 const app = express();
 const PORT = 3000;
 
-// Ruta de health check para Kubernetes
+// Endpoint de salud requerido por Kubernetes
 app.get('/health', (req, res) => {
     res.status(200).send('OK');
 });
@@ -29,7 +29,7 @@ app.get('/pokemon/:name', async (req, res) => {
     }
 });
 
-// Inicia el servidor
+// Iniciar servidor en 0.0.0.0 para que Kubernetes lo detecte
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Backend corriendo en http://0.0.0.0:${PORT}`);
 });

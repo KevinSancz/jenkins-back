@@ -1,12 +1,18 @@
 const express = require('express');
-const fetch = require('node-fetch'); // Si no lo tienes instalado, usa: npm install node-fetch@2
+const fetch = require('node-fetch');
+
 const app = express();
 const PORT = 8080;
 
-// URL del backend desde donde se obtendrá la información
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
+// URL del backend desde una variable de entorno
+const BACKEND_URL = process.env.BACKEND_URL || 'http://backend:3000';
 
-// Ruta para la página principal
+// Endpoint de salud requerido por Kubernetes
+app.get('/health', (req, res) => {
+    res.status(200).send('OK');
+});
+
+// Página principal
 app.get('/', (req, res) => {
     res.send(`
         <h1>Busca un Pokémon</h1>
@@ -17,16 +23,14 @@ app.get('/', (req, res) => {
     `);
 });
 
-// Ruta para consumir el backend y mostrar la información
+// Ruta para consumir el backend
 app.get('/pokemon', async (req, res) => {
-    const pokemonName = req.query.name; // Obtiene el nombre del Pokémon desde el formulario
+    const pokemonName = req.query.name;
 
     try {
-        // Llama al backend
         const response = await fetch(`${BACKEND_URL}/pokemon/${pokemonName}`);
         const data = await response.json();
 
-        // Muestra la información del Pokémon en el navegador
         res.send(`
             <h1>Información de ${data.name}</h1>
             <img src="${data.sprites}" alt="${data.name}">
@@ -35,16 +39,13 @@ app.get('/pokemon', async (req, res) => {
             <a href="/">Buscar otro Pokémon</a>
         `);
     } catch (error) {
-        console.error('Error al consumir el bacK:', error);
-        res.send(`
-            <h1>Error: Pokémon no encontrado</h1>
-            <a href="/">Volver a buscar</a>
-        `);
+        console.error('Error al consumir el backend:', error);
+        res.send(`<h1>Error: Pokémon no encontrado</h1><a href="/">Volver a buscar</a>`);
     }
 });
 
-// Inicia el servidor del frontend
-app.listen(PORT, () => {
-    console.log(`Frontend corriendo en http://localhost:${PORT}`);
+// Iniciar servidor en 0.0.0.0
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Frontend corriendo en http://0.0.0.0:${PORT}`);
     console.log(`Conectado al backend en: ${BACKEND_URL}`);
 });
