@@ -29,10 +29,14 @@ pipeline {
                     steps {
                         dir('Back') {
                             script {
-                                docker.build("${OCI_REGISTRY}/${OCI_NAMESPACE}/${BACK_IMAGE_NAME}:${BUILD_NUMBER}")
+                                def backImage = docker.build("${OCI_REGISTRY}/${OCI_NAMESPACE}/${BACK_IMAGE_NAME}:${BUILD_NUMBER}")
+                                
+                                // Etiqueta la imagen como "latest"
+                                sh "docker tag ${OCI_REGISTRY}/${OCI_NAMESPACE}/${BACK_IMAGE_NAME}:${BUILD_NUMBER} ${OCI_REGISTRY}/${OCI_NAMESPACE}/${BACK_IMAGE_NAME}:latest"
+
                                 docker.withRegistry("https://${OCI_REGISTRY}", '15050001') {
-                                    docker.image("${OCI_REGISTRY}/${OCI_NAMESPACE}/${BACK_IMAGE_NAME}:${BUILD_NUMBER}").push()
-                                    docker.image("${OCI_REGISTRY}/${OCI_NAMESPACE}/${BACK_IMAGE_NAME}:latest").push()
+                                    backImage.push("${BUILD_NUMBER}")
+                                    backImage.push("latest")
                                 }
                             }
                         }
@@ -42,10 +46,14 @@ pipeline {
                     steps {
                         dir('Front') {
                             script {
-                                docker.build("${OCI_REGISTRY}/${OCI_NAMESPACE}/${FRONT_IMAGE_NAME}:${BUILD_NUMBER}")
+                                def frontImage = docker.build("${OCI_REGISTRY}/${OCI_NAMESPACE}/${FRONT_IMAGE_NAME}:${BUILD_NUMBER}")
+                                
+                                // Etiqueta la imagen como "latest"
+                                sh "docker tag ${OCI_REGISTRY}/${OCI_NAMESPACE}/${FRONT_IMAGE_NAME}:${BUILD_NUMBER} ${OCI_REGISTRY}/${OCI_NAMESPACE}/${FRONT_IMAGE_NAME}:latest"
+
                                 docker.withRegistry("https://${OCI_REGISTRY}", '15050001') {
-                                    docker.image("${OCI_REGISTRY}/${OCI_NAMESPACE}/${FRONT_IMAGE_NAME}:${BUILD_NUMBER}").push()
-                                    docker.image("${OCI_REGISTRY}/${OCI_NAMESPACE}/${FRONT_IMAGE_NAME}:latest").push()
+                                    frontImage.push("${BUILD_NUMBER}")
+                                    frontImage.push("latest")
                                 }
                             }
                         }
