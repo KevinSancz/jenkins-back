@@ -32,11 +32,7 @@ app.get('/pokemon', async (req, res) => {
         const data = await response.json();
 
         res.send(`
-            <h1>Información de ${data.name}</h1>
-            <img src="${data.sprites}" alt="${data.name}">
-            <p>Altura: ${data.height}</p>
-            <p>Peso: ${data.weight}</p>
-            <a href="/">Buscar otro Pokémon</a>
+            <h1>${res}</h1>
         `);
     } catch (error) {
         console.error('Error al consumir el backend:', error);
