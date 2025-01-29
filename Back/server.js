@@ -3,6 +3,7 @@ const axios = require('axios');
 
 const app = express();
 const PORT = 3000;
+const name = "hola";
 
 // Endpoint de salud requerido por Kubernetes
 app.get('/health', (req, res) => {
@@ -18,7 +19,7 @@ app.get('/pokemon/:hola', async (req, res) => {
         const pokemonData = response.data;
 
         res.json({
-            name: pokemonData.name,
+            name: name,
             height: pokemonData.height,
             weight: pokemonData.weight,
             sprites: pokemonData.sprites.front_default,
