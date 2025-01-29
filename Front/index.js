@@ -32,7 +32,7 @@ app.get('/pokemon', async (req, res) => {
         const data = await response.json();
 
         res.send(`
-            <h1>${res}</h1>
+            <h1>${data.message}</h1>
         `);
     } catch (error) {
         console.error('Error al consumir el backend:', error);
