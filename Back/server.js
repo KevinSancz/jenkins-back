@@ -3,7 +3,6 @@ const axios = require('axios');
 
 const app = express();
 const PORT = 3000;
-const name = "hola";
 
 // Endpoint de salud requerido por Kubernetes
 app.get('/health', (req, res) => {
@@ -11,7 +10,7 @@ app.get('/health', (req, res) => {
 });
 
 // Ruta para consumir PokéAPI
-app.get('/pokemon/:hola', async (req, res) => {
+app.get('/pokemon/:name', async (req, res) => {
     const { name } = req.params;
 
     try {
@@ -19,10 +18,7 @@ app.get('/pokemon/:hola', async (req, res) => {
         const pokemonData = response.data;
 
         res.json({
-            name: name,
-            height: pokemonData.height,
-            weight: pokemonData.weight,
-            sprites: pokemonData.sprites.front_default,
+            "saludo":"hola"
         });
     } catch (error) {
         console.error(error.message);
