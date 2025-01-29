@@ -77,8 +77,8 @@ pipeline {
                         kubectl apply -f k8s/frontend-deployment.yaml
                     """
                     // Reiniciar los pods para garantizar la actualización
-                    kubectl rollout restart deployment backend
-                    kubectl rollout restart deployment frontend
+                    sh "kubectl rollout restart deployment backend"
+                    sh "kubectl rollout restart deployment frontend"
                 }
             }
         }
