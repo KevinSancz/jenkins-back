@@ -10,11 +10,11 @@ app.get('/health', (req, res) => {
 });
 
 // Ruta para consumir PokéAPI
-app.get('/pokemon/:name', async (req, res) => {
+app.get('/pokemon/:hola', async (req, res) => {
     const { name } = req.params;
 
     try {
-        const response = await axios.get(`https://pokeapi.co/api/v2/pokemon/${name}`);
+        const response = await axios.get(`Holas`);
         const pokemonData = response.data;
 
         res.json({
