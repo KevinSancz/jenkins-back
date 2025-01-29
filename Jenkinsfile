@@ -70,12 +70,15 @@ pipeline {
                         sed -i 's/BUILD_NUMBER_PLACEHOLDER/${BUILD_NUMBER}/g' k8s/backend-deployment.yaml
                         sed -i 's/BUILD_NUMBER_PLACEHOLDER/${BUILD_NUMBER}/g' k8s/frontend-deployment.yaml
                     """
-
+                    
                     // Aplicar los manifests
                     sh """
                         kubectl apply -f k8s/backend-deployment.yaml
                         kubectl apply -f k8s/frontend-deployment.yaml
                     """
+                    # Reiniciar los pods para garantizar la actualización
+                    kubectl rollout restart deployment backend
+                    kubectl rollout restart deployment frontend
                 }
             }
         }

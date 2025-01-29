@@ -30,3 +30,7 @@ app.get('/pokemon/:name', async (req, res) => {
 app.listen(PORT, '0.0.0.0',() => {
     console.log(`Backend corriendo en http://0.0.0.0:${PORT}`);
 });
+
+app.get('/healt',(req, res) => {
+    res.status(200).json({status:'ok'})
+});
