@@ -1,25 +1,26 @@
-version: "3.8"
+version: '3.8'
+
 services:
   backend:
     build:
-      context: ./backend   # Ruta al Dockerfile del backend
+      context: ./Back # Ruta al Dockerfile del backend
+    container_name: backend
     ports:
-      - "3000:3000"        # Exponer el backend en el puerto 3000
+      - "3000:3000" # Expone el backend en el puerto 3000
     networks:
-      - app-network
-    environment:
-      - NODE_ENV=development
+      - pokemon-network
 
   frontend:
     build:
-      context: ./frontend  # Ruta al Dockerfile del frontend
+      context: ./Front # Ruta al Dockerfile del frontend
+    container_name: frontend
     ports:
-      - "8080:80"          # Exponer el frontend en el puerto 8080
-    networks:
-      - app-network
+      - "8080:80" # Expone el frontend en el puerto 8080
     environment:
-      - BACKEND_URL=http://backend:3000  # Dirección interna del backend
+      BACKEND_URL: "http://backend:3000" # Apunta al servicio del backend
+    networks:
+      - pokemon-network
 
 networks:
-  app-network:
+  pokemon-network:
     driver: bridge

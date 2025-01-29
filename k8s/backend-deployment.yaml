@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: backend
-        image: iad.ocir.io/idxyojfomq6q/backend:${BUILD_NUMBER} # Permite versionado dinámico
+        image: iad.ocir.io/idxyojfomq6q/backend:BUILD_NUMBER_PLACEHOLDER # Permite versionado dinámico
         ports:
         - containerPort: 3000
         resources: # Recurso recomendado para limitar uso de CPU/memoria
